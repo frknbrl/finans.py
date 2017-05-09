@@ -16,6 +16,9 @@ import requests
 
 import smtplib
 
+import sqlite3
+
+
 
 #Kodlar
 
@@ -50,6 +53,15 @@ def baglan():
     sunucu.login("furkanbiroll@gmail.com", "48586745366_f")
     return sunucu
 
+# Connect to Database
+
+db_name = "database.db"
+global im, connection
+
+with sqlite3.connect('database.db') as connection:
+    print "Connection of the Database successfully. \n"
+
+im = connection.cursor()
 
 input_type0 = " (0) - Sonucu Goster"
 input_type1 = " (1) - Hisse"
@@ -132,31 +144,115 @@ else:
 
                 def hisseSonDurum():
                     i = 0
+                    global hisseAlisFiyati
                     hisseAlisFiyati = hisseDurum[i]
+
+                    global latestHisseValueString, latestHisseValueArray, latestHisseValueFloat
+                    latestHisseValueString = hisseAlisFiyati
+                    latestHisseValueFloat = float(latestHisseValueString.replace(',', '.'))
+
                     return hisseAlisFiyati
 
                 def hisseYuzde():
                     i = 0
+                    global yuzdeDegisim
                     yuzdeDegisim = hYuzde[i]
+
+                    global latestYuzdeValueString, latestYuzdeValueArray, latestYuzdeValueFloat
+                    latestYuzdeValueString = yuzdeDegisim
+                    latestYuzdeValueArray = latestYuzdeValueString.partition("%")
+                    latestYuzdeValueFloat = float(latestYuzdeValueArray[0].replace(',', '.'))
+
                     return yuzdeDegisim
 
                 now = datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+                nowString = str(now)
+
+                hisseString = str(hisseSonDurum())
+                yuzdeString = str (hisseYuzde())
 
                 #Display in Console
 
                 print "\n--------------- " + input_group[x][1] + " Hisse Fiyati ---------------"
                 print "-"*50
-                print " | " + hisseSonDurum() + "  | " + " "*7 + " | " + hisseYuzde() + " | " + str(now) + " | "
+                print " | " + hisseSonDurum() + "  | " + " "*7 + " | " + hisseYuzde() + " | " + nowString + " | "
                 print "-" * 50
+
+                # Create Table
+
+                create_table = ("""
+                  CREATE TABLE IF NOT exists """ + input_group[x][1] + """(
+                  Kayit_No INTEGER PRIMARY KEY AUTOINCREMENT,
+                  Tarih NOT NULL ,
+                  Satis_Fiyati NOT NULL ,
+                  Alis_Fiyati NOT NULL ,
+                  Yuzde_Degisim NOT NULL)
+                """)
+
+                im.execute(create_table)
+                connection.commit()
+
+                # Write to Database
+
+                insert_table = ("""
+                    INSERT INTO input_group[x][1] (
+                    Kayit_No, Tarih, Satis_Fiyati,
+                    Alis_Fiyati, Yuzde_Degisim)
+                    VALUES (?, ?, ?, ?, ?)
+                    """)
+
+                print "Table updated successfully."
+
+                # im.executemany(
+                #    '''
+                #    INSERT INTO input_group[x][1] (Tarih, Satis_Fiyati, Alis_Fiyati, Yuzde_Degisim) VALUES(?,?,?,?)''',
+                #    [(str(now), (float(hisseAlisFiyati) - 0.01), hisseAlisFiyati,
+                #      yuzdeDegisim)])
+
+                #im.execute(insert_table,
+                #    (nowString, hisseString, hisseString, yuzdeString)
+                #    )
+
+                im.execute("INSERT INTO {} (Tarih, Satis_Fiyati, Alis_Fiyati, Yuzde_Degisim) VALUES(?, ?, ?, ?)".format(input_group[x][1]), (nowString, hisseString, hisseString, yuzdeString))
+
+                #im.execute("SELECT COUNT(Name) FROM {} WHERE Name=?".format(group), (food,))
+
+                #im.execute("INSERT INTO {} VALUES(?, ?)".format(group), (food, 1))
+
+                #im.execute("UPDATE {} SET Times=? WHERE Name=?".format(group),(times_before + 1, food))
+
+
+                connection.commit()
+
+
+                def delete():
+
+                    pass
+
+
+                def update():
+
+                    pass
+
+
+                def list():
+                    read_table = ("""SELECT * FROM input_group[x][1]""")
+
+                    veriler = im.execute(read_table)
+
+                    print "       " + "Tarih" + "      " + "    " + "Satis Fiyati" + "   " + "Alis Fiyati" + "   " + "Degisim Orani(%)" + "\n"
+                    print "-------------------" + "   " + "------------" + "   " + "-----------" + "   " + "----------------" + "\n"
+
+                    for row in veriler:
+                        print " ", row[1], "     " + row[2], "       ", row[3], "        ", row[4]
+
+                    print "\nPrice of the gold values collected and saved successfully..."
+
+                    connection.commit()
 
                 #Send an e-mail
 
-                global latestValueString, latestValueArray, latestValueFloat
-                latestValueString = hisseYuzde()
-                latestValueArray = latestValueString.partition("%")
-                latestValueFloat = float(latestValueArray[0].replace(',', '.'))
-
-                if latestValueFloat > 1:
+                if latestYuzdeValueFloat > 1:
                     if send_Mail_Boolean == 0:
 
                         def mailgonder():
@@ -193,7 +289,6 @@ else:
                 else:
                     pass
 
-                    #Write to Database
 
             elif input_group[x][0] == "Doviz":
 
@@ -207,25 +302,93 @@ else:
                 def satisSonDurum():
                     j = 0
                     satisFiyati = veriSatis[j]
+
+                    global latestVeriSatisValueString, latestVeriSatisValueArray, latestVeriSatisValueFloat
+                    latestVeriSatisValueString = satisFiyati
+                    latestVeriSatisValueFloat = float(latestVeriSatisValueString.replace(',', '.'))
+
                     return satisFiyati
 
                 def alisSonDurum():
                     i = 0
                     alisFiyati = veriAlis[i]
+
+                    global latestVeriAlisValueString, latestVeriAlisValueArray, latestVeriAlisValueFloat
+                    latestVeriAlisValueString = alisFiyati
+                    latestVeriAlisValueFloat = float(latestVeriAlisValueString.replace(',', '.'))
+
                     return alisFiyati
 
                 def veriYuzde():
                     i = 0
                     yuzdeDegisim = vYuzde[i]
+
+                    global latestYuzdeValueString, latestYuzdeValueArray, latestYuzdeValueFloat
+                    latestYuzdeValueString = yuzdeDegisim
+                    latestYuzdeValueArray = latestYuzdeValueString.partition("%")
+                    latestYuzdeValueFloat = float(latestYuzdeValueArray[0].replace(',', '.'))
+
                     return yuzdeDegisim
 
                 now = datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+                nowStringDoviz = str(now)
+
+                dovizSatisString = str(satisSonDurum())
+                dovizAlisString = str(alisSonDurum())
+                dovizYuzdeString = str(veriYuzde())
 
                 #Display in Console
                 print "\n--------------- " + input_group[x][1] + " Doviz Fiyati ---------------"
                 print "-"*50
-                print " | " + satisSonDurum() + " | " + alisSonDurum() + " | " + veriYuzde() + " | " + str(now) + " | "
+                print " | " + satisSonDurum() + " | " + alisSonDurum() + " | " + veriYuzde() + " | " + nowStringDoviz + " | "
                 print "-"*50
+
+
+                # Create Table
+
+                create_table = ("""
+                  CREATE TABLE IF NOT exists """ + input_group[x][1] + """(
+                  Kayit_No INTEGER PRIMARY KEY AUTOINCREMENT,
+                  Tarih NOT NULL ,
+                  Satis_Fiyati NOT NULL ,
+                  Alis_Fiyati NOT NULL ,
+                  Yuzde_Degisim NOT NULL)
+                """)
+
+                im.execute(create_table)
+                connection.commit()
+
+                # Write to Database
+
+                insert_table = ("""
+                    INSERT INTO input_group[x][1] (
+                    Kayit_No, Tarih, Satis_Fiyati,
+                    Alis_Fiyati, Yuzde_Degisim)
+                    VALUES (?, ?, ?, ?, ?)
+                    """)
+
+                print "Table updated successfully."
+
+                # im.executemany(
+                #    '''
+                #    INSERT INTO input_group[x][1] (Tarih, Satis_Fiyati, Alis_Fiyati, Yuzde_Degisim) VALUES(?,?,?,?)''',
+                #    [(str(now), (float(hisseAlisFiyati) - 0.01), hisseAlisFiyati,
+                #      yuzdeDegisim)])
+
+                #im.execute(insert_table,
+                #    (nowString, hisseString, hisseString, yuzdeString)
+                #    )
+
+                im.execute("INSERT INTO {} (Tarih, Satis_Fiyati, Alis_Fiyati, Yuzde_Degisim) VALUES(?, ?, ?, ?)".format(input_group[x][1]), (nowStringDoviz, dovizSatisString, dovizAlisString, dovizYuzdeString))
+
+                #im.execute("SELECT COUNT(Name) FROM {} WHERE Name=?".format(group), (food,))
+
+                #im.execute("INSERT INTO {} VALUES(?, ?)".format(group), (food, 1))
+
+                #im.execute("UPDATE {} SET Times=? WHERE Name=?".format(group),(times_before + 1, food))
+
+                connection.commit()
+
 
                 #Send an e-mail
 
@@ -290,28 +453,98 @@ else:
                 veriAlis = tree.xpath('//*[@id="content"]/div[2]/div[1]/div[2]/div[3]/span[2]/text()')
                 vYuzde = tree.xpath('//*[@id="content"]/div[2]/div[1]/div[2]/div[4]/span[3]/text()')
 
+
                 def satisSonDurum():
                     j = 0
                     satisFiyati = veriSatis[j]
+
+                    global latestVeriSatisValueString, latestVeriSatisValueArray, latestVeriSatisValueFloat
+                    latestVeriSatisValueString = satisFiyati
+                    latestVeriSatisValueFloat = float(latestVeriSatisValueString.replace(',', '.'))
+
                     return satisFiyati
 
                 def alisSonDurum():
                     i = 0
                     alisFiyati = veriAlis[i]
+
+                    global latestVeriAlisValueString, latestVeriAlisValueArray, latestVeriAlisValueFloat
+                    latestVeriAlisValueString = alisFiyati
+                    latestVeriAlisValueFloat = float(latestVeriAlisValueString.replace(',', '.'))
+
                     return alisFiyati
 
                 def veriYuzde():
                     i = 0
                     yuzdeDegisim = vYuzde[i]
+
+                    global latestYuzdeValueString, latestYuzdeValueArray, latestYuzdeValueFloat
+                    latestYuzdeValueString = yuzdeDegisim
+                    latestYuzdeValueArray = latestYuzdeValueString.partition("%")
+                    latestYuzdeValueFloat = float(latestYuzdeValueArray[0].replace(',', '.'))
+
                     return yuzdeDegisim
 
                 now = datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+                nowStringAltin = str(now)
+
+                altinSatisString = str(satisSonDurum())
+                altinAlisString = str(alisSonDurum())
+                altinYuzdeString = str(veriYuzde())
 
                 #Display in Console
                 print "\n--------------- " + input_group[x][1] + " Altin Fiyati ---------------"
                 print "-"*50
-                print " | " + satisSonDurum() + " | " + alisSonDurum() + " | " + veriYuzde() + " | " + str(now) + " | "
+                print " | " + satisSonDurum() + " | " + alisSonDurum() + " | " + veriYuzde() + " | " + nowStringAltin + " | "
                 print "-"*50
+
+
+                # Create Table
+
+                create_table = ("""
+                  CREATE TABLE IF NOT exists """ + input_group[x][1] + """(
+                  Kayit_No INTEGER PRIMARY KEY AUTOINCREMENT,
+                  Tarih NOT NULL ,
+                  Satis_Fiyati NOT NULL ,
+                  Alis_Fiyati NOT NULL ,
+                  Yuzde_Degisim NOT NULL)
+                """)
+
+                im.execute(create_table)
+                connection.commit()
+
+                # Write to Database
+
+                insert_table = ("""
+                    INSERT INTO input_group[x][1] (
+                    Kayit_No, Tarih, Satis_Fiyati,
+                    Alis_Fiyati, Yuzde_Degisim)
+                    VALUES (?, ?, ?, ?, ?)
+                    """)
+
+                print "Table updated successfully."
+
+                # im.executemany(
+                #    '''
+                #    INSERT INTO input_group[x][1] (Tarih, Satis_Fiyati, Alis_Fiyati, Yuzde_Degisim) VALUES(?,?,?,?)''',
+                #    [(str(now), (float(hisseAlisFiyati) - 0.01), hisseAlisFiyati,
+                #      yuzdeDegisim)])
+
+                #im.execute(insert_table,
+                #    (nowString, hisseString, hisseString, yuzdeString)
+                #    )
+
+                im.execute("INSERT INTO {} (Tarih, Satis_Fiyati, Alis_Fiyati, Yuzde_Degisim) VALUES(?, ?, ?, ?)".format(input_group[x][1]), (nowStringAltin, altinSatisString, altinAlisString, altinYuzdeString))
+
+                #im.execute("SELECT COUNT(Name) FROM {} WHERE Name=?".format(group), (food,))
+
+                #im.execute("INSERT INTO {} VALUES(?, ?)".format(group), (food, 1))
+
+                #im.execute("UPDATE {} SET Times=? WHERE Name=?".format(group),(times_before + 1, food))
+
+
+                connection.commit()
+
 
                 #Send an e-mail
 
